@@ -173,8 +173,8 @@ export async function returnBlockImg(url) {
         return new Response(null, {
             status: 302,
             headers: {
-                "Location": url.origin + "/blockimg",
-                "Cache-Control": "public, max-age=86400"
+                "Location": "/blockimg", 
+                "Cache-Control": "no-store" 
             }
         })
     } else {
@@ -195,8 +195,8 @@ export async function returnWhiteListImg(url) {
         return new Response(null, {
             status: 302,
             headers: {
-                "Location": url.origin + "/whiteliston",
-                "Cache-Control": "public, max-age=86400"
+                "Location": "/whiteliston",
+                "Cache-Control": "no-store"
             }
         })
     } else {
