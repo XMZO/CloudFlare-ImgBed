@@ -426,37 +426,16 @@ async function handleS3File(context, metadata, encodedFileName, fileType) {
             Key: key
         });
         
-        // 生成预签名URL
+        // 生成预签名URL（1小时有效）
         const signedUrl = await getSignedUrl(s3Client, command, { 
             expiresIn: 3600 
         });
         
-        const range = request.headers.get('Range');
-        let useRange = false;
-        
-        // 如果有Range请求，先用HEAD检测是否支持
-        if (range) {
-            try {
-                const headResponse = await fetch(signedUrl, { method: 'HEAD' });
-                const acceptRanges = headResponse.headers.get('Accept-Ranges');
-                useRange = acceptRanges === 'bytes';
-            } catch (e) {
-                console.log('HEAD request failed, assuming no Range support');
-                useRange = false;
-            }
-        }
-        
-        // 根据检测结果决定是否使用Range
-        const fetchOptions = {
+        // 完全忽略客户端的Range请求，总是获取完整文件
+        const s3Response = await fetch(signedUrl, {
             method: 'GET',
             headers: {}
-        };
-        
-        if (useRange && range) {
-            fetchOptions.headers['Range'] = range;
-        }
-        
-        const s3Response = await fetch(signedUrl, fetchOptions);
+        });
         
         if (!s3Response.ok) {
             throw new Error(`S3 returned ${s3Response.status}: ${s3Response.statusText}`);
@@ -474,36 +453,22 @@ async function handleS3File(context, metadata, encodedFileName, fileType) {
             headers.set('ETag', s3Response.headers.get('ETag'));
         }
         
-        if (useRange && s3Response.status === 206) {
-            if (s3Response.headers.get('Content-Range')) {
-                headers.set('Content-Range', s3Response.headers.get('Content-Range'));
-            }
-            headers.set('Accept-Ranges', 'bytes');
-            
-            if (request.method === 'HEAD') {
-                return handleHeadRequest(headers);
-            }
-            
-            return new Response(s3Response.body, {
-                status: 206,
-                headers
-            });
-        } else {
-            headers.set('Accept-Ranges', 'none');
-            
-            if (request.method === 'HEAD') {
-                return handleHeadRequest(headers);
-            }
-            
-            return new Response(s3Response.body, {
-                status: 200,
-                headers
-            });
+        // 明确告诉客户端不支持Range
+        headers.set('Accept-Ranges', 'none');
+        
+        // 处理HEAD请求
+        if (request.method === 'HEAD') {
+            return handleHeadRequest(headers);
         }
+        
+        // 总是返回200和完整内容
+        return new Response(s3Response.body, {
+            status: 200,
+            headers
+        });
 
     } catch (error) {
         console.error('S3 Error:', error);
         return new Response(`Error: Failed to fetch from S3 - ${error.message}`, { status: 500 });
     }
 }
-     
