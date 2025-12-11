@@ -219,73 +219,72 @@ async function handleTelegramChunkedFile(context, imgRecord, encodedFileName, fi
     }
     
     try {
-        // 预先获取所有需要的分片数据（支持 CDN 缓存）
-        const chunksData = [];
-        let currentPosition = 0;
-
-        for (let i = 0; i < chunks.length; i++) {
-            const chunk = chunks[i];
-            const chunkSize = chunk.size || 0;
-
-            // 如果当前分片完全在请求范围之前，跳过
-            if (currentPosition + chunkSize <= rangeStart) {
-                currentPosition += chunkSize;
-                continue;
+        // 创建支持Range请求的流
+        const stream = new ReadableStream({
+            async start(controller) {
+                try {
+                    let currentPosition = 0;
+                    
+                    for (let i = 0; i < chunks.length; i++) {
+                        const chunk = chunks[i];
+                        const chunkSize = chunk.size || 0;
+                        
+                        // 如果当前分片完全在请求范围之前，跳过
+                        if (currentPosition + chunkSize <= rangeStart) {
+                            currentPosition += chunkSize;
+                            continue;
+                        }
+                        
+                        // 如果当前分片完全在请求范围之后，结束
+                        if (currentPosition > rangeEnd) {
+                            break;
+                        }
+                        
+                        // 获取分片数据
+                        const chunkData = await fetchTelegramChunkWithRetry(TgBotToken, chunk, 3);
+                        if (!chunkData) {
+                            throw new Error(`Failed to fetch chunk ${chunk.index} after retries`);
+                        }
+                        
+                        // 计算在当前分片中的起始和结束位置
+                        const chunkStart = Math.max(0, rangeStart - currentPosition);
+                        const chunkEnd = Math.min(chunkSize, rangeEnd - currentPosition + 1);
+                        
+                        // 如果需要部分分片数据
+                        if (chunkStart > 0 || chunkEnd < chunkSize) {
+                            const partialData = chunkData.slice(chunkStart, chunkEnd);
+                            controller.enqueue(partialData);
+                        } else {
+                            controller.enqueue(chunkData);
+                        }
+                        
+                        currentPosition += chunkSize;
+                    }
+                    
+                    controller.close();
+                } catch (error) {
+                    controller.error(error);
+                }
             }
-
-            // 如果当前分片完全在请求范围之后，结束
-            if (currentPosition > rangeEnd) {
-                break;
-            }
-
-            // 获取分片数据
-            const chunkData = await fetchTelegramChunkWithRetry(TgBotToken, chunk, 3);
-            if (!chunkData) {
-                throw new Error(`Failed to fetch chunk ${chunk.index} after retries`);
-            }
-
-            // 计算在当前分片中的起始和结束位置
-            const chunkStart = Math.max(0, rangeStart - currentPosition);
-            const chunkEnd = Math.min(chunkSize, rangeEnd - currentPosition + 1);
-
-            // 如果需要部分分片数据
-            if (chunkStart > 0 || chunkEnd < chunkSize) {
-                const partialData = chunkData.slice(chunkStart, chunkEnd);
-                chunksData.push(partialData);
-            } else {
-                chunksData.push(chunkData);
-            }
-
-            currentPosition += chunkSize;
-        }
-
-        // 合并所有分片为完整的 Uint8Array
-        const totalLength = chunksData.reduce((sum, chunk) => sum + chunk.length, 0);
-        const mergedData = new Uint8Array(totalLength);
-        let offset = 0;
-        for (const chunk of chunksData) {
-            mergedData.set(chunk, offset);
-            offset += chunk.length;
-        }
-
+        });
+        
         // 设置Range相关头部
         if (isRangeRequest) {
             setRangeHeaders(headers, rangeStart, rangeEnd, totalSize);
-
-            return new Response(mergedData, {
+            
+            return new Response(stream, {
                 status: 206, // Partial Content
                 headers,
             });
         } else {
-            // 强制所有分片文件都使用 public 缓存策略，无论 Referer
-            headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-
-            return new Response(mergedData, {
+            headers.set('Cache-Control', 'private, max-age=86400'); // CDN 不缓存完整文件，避免 CDN 不支持 Range 请求
+            
+            return new Response(stream, {
                 status: 200,
                 headers,
             });
         }
-
+        
     } catch (error) {
         return new Response(`Error: Failed to reconstruct chunked file - ${error.message}`, { status: 500 });
     }
