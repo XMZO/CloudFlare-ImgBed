@@ -403,7 +403,7 @@ async function handleR2File(context, fileId, encodedFileName, fileType) {
     }
 }
 
-// 处理S3文件读取
+// 处理S3
 async function handleS3File(context, metadata, encodedFileName, fileType) {
     const { Referer, url, request } = context;
 
@@ -426,49 +426,37 @@ async function handleS3File(context, metadata, encodedFileName, fileType) {
             Key: key
         });
         
-        // 生成预签名URL（1小时有效）
+        // 生成预签名URL
         const signedUrl = await getSignedUrl(s3Client, command, { 
             expiresIn: 3600 
         });
         
-        // 检查是否有Range请求
         const range = request.headers.get('Range');
+        let useRange = false;
         
-        let s3Response;
-        let supportsRange = true;
-        
+        // 如果有Range请求，先用HEAD检测是否支持
         if (range) {
-            // 先尝试带Range的请求
             try {
-                s3Response = await fetch(signedUrl, {
-                    method: 'GET',
-                    headers: { 'Range': range }
-                });
-                
-                // 如果返回416，说明不支持Range
-                if (s3Response.status === 416) {
-                    supportsRange = false;
-                    // 重新请求完整文件
-                    s3Response = await fetch(signedUrl, {
-                        method: 'GET',
-                        headers: {}
-                    });
-                }
-            } catch (error) {
-                // Range请求失败，尝试完整请求
-                supportsRange = false;
-                s3Response = await fetch(signedUrl, {
-                    method: 'GET',
-                    headers: {}
-                });
+                const headResponse = await fetch(signedUrl, { method: 'HEAD' });
+                const acceptRanges = headResponse.headers.get('Accept-Ranges');
+                useRange = acceptRanges === 'bytes';
+            } catch (e) {
+                console.log('HEAD request failed, assuming no Range support');
+                useRange = false;
             }
-        } else {
-            // 没有Range请求，直接获取完整文件
-            s3Response = await fetch(signedUrl, {
-                method: 'GET',
-                headers: {}
-            });
         }
+        
+        // 根据检测结果决定是否使用Range
+        const fetchOptions = {
+            method: 'GET',
+            headers: {}
+        };
+        
+        if (useRange && range) {
+            fetchOptions.headers['Range'] = range;
+        }
+        
+        const s3Response = await fetch(signedUrl, fetchOptions);
         
         if (!s3Response.ok) {
             throw new Error(`S3 returned ${s3Response.status}: ${s3Response.statusText}`);
@@ -478,7 +466,6 @@ async function handleS3File(context, metadata, encodedFileName, fileType) {
         const headers = new Headers();
         setCommonHeaders(headers, encodedFileName, fileType, Referer, url);
         
-        // 复制必要的S3响应头
         if (s3Response.headers.get('Content-Length')) {
             headers.set('Content-Length', s3Response.headers.get('Content-Length'));
         }
@@ -487,14 +474,12 @@ async function handleS3File(context, metadata, encodedFileName, fileType) {
             headers.set('ETag', s3Response.headers.get('ETag'));
         }
         
-        // 如果S3支持Range且返回了206
-        if (supportsRange && s3Response.status === 206) {
+        if (useRange && s3Response.status === 206) {
             if (s3Response.headers.get('Content-Range')) {
                 headers.set('Content-Range', s3Response.headers.get('Content-Range'));
             }
             headers.set('Accept-Ranges', 'bytes');
             
-            // 处理HEAD请求
             if (request.method === 'HEAD') {
                 return handleHeadRequest(headers);
             }
@@ -504,10 +489,8 @@ async function handleS3File(context, metadata, encodedFileName, fileType) {
                 headers
             });
         } else {
-            // 不支持Range或返回完整文件
             headers.set('Accept-Ranges', 'none');
             
-            // 处理HEAD请求
             if (request.method === 'HEAD') {
                 return handleHeadRequest(headers);
             }
@@ -523,3 +506,4 @@ async function handleS3File(context, metadata, encodedFileName, fileType) {
         return new Response(`Error: Failed to fetch from S3 - ${error.message}`, { status: 500 });
     }
 }
+     
