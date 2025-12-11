@@ -1,5 +1,4 @@
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { fetchSecurityConfig } from "../utils/sysConfig";
 import { TelegramAPI } from "../utils/telegramAPI";
 import { setCommonHeaders, setRangeHeaders, handleHeadRequest, getFileContent, isTgChannel,
@@ -403,7 +402,7 @@ async function handleR2File(context, fileId, encodedFileName, fileType) {
     }
 }
 
-// 处理S3
+// 处理S3文件读取
 async function handleS3File(context, metadata, encodedFileName, fileType) {
     const { Referer, url, request } = context;
 
@@ -421,54 +420,47 @@ async function handleS3File(context, metadata, encodedFileName, fileType) {
     const key = metadata?.S3FileKey;
 
     try {
-        const command = new GetObjectCommand({
+        // 检查Range请求头
+        const range = request.headers.get('Range');
+        const commandParams = {
             Bucket: bucketName,
             Key: key
-        });
+        };
         
-        // 生成预签名URL（1小时有效）
-        const signedUrl = await getSignedUrl(s3Client, command, { 
-            expiresIn: 3600 
-        });
-        
-        // 完全忽略客户端的Range请求，总是获取完整文件
-        const s3Response = await fetch(signedUrl, {
-            method: 'GET',
-            headers: {}
-        });
-        
-        if (!s3Response.ok) {
-            throw new Error(`S3 returned ${s3Response.status}: ${s3Response.statusText}`);
+        if (range) {
+            // 添加Range参数用于部分内容请求
+            commandParams.Range = range;
         }
         
+        const command = new GetObjectCommand(commandParams);
+        const response = await s3Client.send(command);
+
         // 设置响应头
         const headers = new Headers();
         setCommonHeaders(headers, encodedFileName, fileType, Referer, url);
-        
-        if (s3Response.headers.get('Content-Length')) {
-            headers.set('Content-Length', s3Response.headers.get('Content-Length'));
+
+        // 设置Content-Length和Content-Range头
+        if (response.ContentLength) {
+            headers.set('Content-Length', response.ContentLength.toString());
         }
         
-        if (s3Response.headers.get('ETag')) {
-            headers.set('ETag', s3Response.headers.get('ETag'));
+        if (response.ContentRange) {
+            headers.set('Content-Range', response.ContentRange);
         }
-        
-        // 明确告诉客户端不支持Range
-        headers.set('Accept-Ranges', 'none');
         
         // 处理HEAD请求
         if (request.method === 'HEAD') {
             return handleHeadRequest(headers);
         }
-        
-        // 总是返回200和完整内容
-        return new Response(s3Response.body, {
-            status: 200,
-            headers
+
+        // 返回响应，支持流式传输
+        const statusCode = range ? 206 : 200; // Range请求返回206 Partial Content
+        return new Response(response.Body, { 
+            status: statusCode, 
+            headers 
         });
 
     } catch (error) {
-        console.error('S3 Error:', error);
         return new Response(`Error: Failed to fetch from S3 - ${error.message}`, { status: 500 });
     }
 }
