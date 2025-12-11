@@ -421,31 +421,54 @@ async function handleS3File(context, metadata, encodedFileName, fileType) {
     const key = metadata?.S3FileKey;
 
     try {
-        // 检查Range请求
-        const range = request.headers.get('Range');
-        
         const command = new GetObjectCommand({
             Bucket: bucketName,
             Key: key
         });
         
-        // 生成预签名URL
+        // 生成预签名URL（1小时有效）
         const signedUrl = await getSignedUrl(s3Client, command, { 
             expiresIn: 3600 
         });
         
-        // 使用fetch获取文件（避免AWS SDK的XML解析问题）
-        const fetchOptions = {
-            method: request.method,
-            headers: {}
-        };
+        // 检查是否有Range请求
+        const range = request.headers.get('Range');
         
-        // 如果有Range请求，添加到fetch headers
+        let s3Response;
+        let supportsRange = true;
+        
         if (range) {
-            fetchOptions.headers['Range'] = range;
+            // 先尝试带Range的请求
+            try {
+                s3Response = await fetch(signedUrl, {
+                    method: 'GET',
+                    headers: { 'Range': range }
+                });
+                
+                // 如果返回416，说明不支持Range
+                if (s3Response.status === 416) {
+                    supportsRange = false;
+                    // 重新请求完整文件
+                    s3Response = await fetch(signedUrl, {
+                        method: 'GET',
+                        headers: {}
+                    });
+                }
+            } catch (error) {
+                // Range请求失败，尝试完整请求
+                supportsRange = false;
+                s3Response = await fetch(signedUrl, {
+                    method: 'GET',
+                    headers: {}
+                });
+            }
+        } else {
+            // 没有Range请求，直接获取完整文件
+            s3Response = await fetch(signedUrl, {
+                method: 'GET',
+                headers: {}
+            });
         }
-        
-        const s3Response = await fetch(signedUrl, fetchOptions);
         
         if (!s3Response.ok) {
             throw new Error(`S3 returned ${s3Response.status}: ${s3Response.statusText}`);
@@ -460,25 +483,40 @@ async function handleS3File(context, metadata, encodedFileName, fileType) {
             headers.set('Content-Length', s3Response.headers.get('Content-Length'));
         }
         
-        if (s3Response.headers.get('Content-Range')) {
-            headers.set('Content-Range', s3Response.headers.get('Content-Range'));
-        }
-        
         if (s3Response.headers.get('ETag')) {
             headers.set('ETag', s3Response.headers.get('ETag'));
         }
         
-        // 处理HEAD请求
-        if (request.method === 'HEAD') {
-            return handleHeadRequest(headers);
+        // 如果S3支持Range且返回了206
+        if (supportsRange && s3Response.status === 206) {
+            if (s3Response.headers.get('Content-Range')) {
+                headers.set('Content-Range', s3Response.headers.get('Content-Range'));
+            }
+            headers.set('Accept-Ranges', 'bytes');
+            
+            // 处理HEAD请求
+            if (request.method === 'HEAD') {
+                return handleHeadRequest(headers);
+            }
+            
+            return new Response(s3Response.body, {
+                status: 206,
+                headers
+            });
+        } else {
+            // 不支持Range或返回完整文件
+            headers.set('Accept-Ranges', 'none');
+            
+            // 处理HEAD请求
+            if (request.method === 'HEAD') {
+                return handleHeadRequest(headers);
+            }
+            
+            return new Response(s3Response.body, {
+                status: 200,
+                headers
+            });
         }
-        
-        // 返回响应
-        const statusCode = range ? 206 : 200;
-        return new Response(s3Response.body, {
-            status: statusCode,
-            headers
-        });
 
     } catch (error) {
         console.error('S3 Error:', error);
