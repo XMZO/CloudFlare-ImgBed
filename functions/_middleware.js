@@ -1,6 +1,7 @@
 export async function onRequest(context) {
   const { request, env } = context;
   const hostname = request.headers.get("host") ?? "";
+  const url = new URL(request.url);
 
   // Patch `Headers.prototype.get` once so downstream code that prefers
   // `cf-connecting-ip` can still see the real client IP when the request is from
@@ -10,6 +11,54 @@ export async function onRequest(context) {
   const SECRET_KEY = env.WORKER_SECRET_KEY;
   const workerKey = request.headers.get("X-Forwarded-By-Worker");
   const isFromWorker = SECRET_KEY && workerKey === SECRET_KEY;
+  const rawGet = globalThis.__hazukiOriginalHeadersGet || Headers.prototype.get;
+  const rawCfIp = safeHeaderGet(rawGet, request.headers, "cf-connecting-ip");
+  const trustedProxyIps = globalThis.__hazukiTrustedProxyIps;
+  const trustedByIp = !!(trustedProxyIps && rawCfIp && trustedProxyIps.has(rawCfIp));
+  const isTrusted = !!isFromWorker || trustedByIp;
+
+  if (isTrusted) {
+    const clientIp =
+      safeHeaderGet(rawGet, request.headers, "x-real-ip") ||
+      firstForwardedIp(safeHeaderGet(rawGet, request.headers, "x-forwarded-for"));
+
+    if (clientIp) {
+      patchHeadersGetInstance(request.headers, clientIp);
+    }
+  }
+
+  if (url.pathname === "/_hazuki/debug/headers") {
+    if (!isTrusted) {
+      return new Response(null, { status: 404 });
+    }
+
+    const payload = {
+      ok: true,
+      host: hostname,
+      isFromWorker: !!isFromWorker,
+      trustedByIp,
+      headers: {
+        cfConnectingIpRaw: rawCfIp,
+        cfConnectingIpEffective: request.headers.get("cf-connecting-ip"),
+        xRealIp: safeHeaderGet(rawGet, request.headers, "x-real-ip"),
+        xForwardedFor: safeHeaderGet(rawGet, request.headers, "x-forwarded-for"),
+      },
+      debug: {
+        secretKeySet: !!SECRET_KEY,
+        workerKeyPresent: !!safeHeaderGet(rawGet, request.headers, "x-forwarded-by-worker"),
+        patchedHeadersGet: !!globalThis.__hazukiPatchedHeadersGet,
+        patchedHeadersGetError: globalThis.__hazukiPatchedHeadersGetError || "",
+      },
+    };
+
+    return new Response(JSON.stringify(payload, null, 2), {
+      status: 200,
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "no-store",
+      },
+    });
+  }
 
   if (hostname.endsWith('.pages.dev') && !isFromWorker) {
     return new Response(null, {
@@ -17,26 +66,6 @@ export async function onRequest(context) {
     });
   }
 
-  // If the request is from a trusted proxy (e.g. Hazuki), override Cloudflare's
-  // cf-connecting-ip so the app can read the real client IP without code changes.
-  if (isFromWorker) {
-    const clientIp =
-      request.headers.get("x-real-ip") ||
-      firstForwardedIp(request.headers.get("x-forwarded-for"));
-
-    if (clientIp) {
-      const headers = new Headers(request.headers);
-      headers.set("cf-connecting-ip", clientIp);
-      const nextRequest = new Request(request, { headers });
-      try {
-        context.request = nextRequest;
-      } catch (_) {
-        // ignore
-      }
-      return await context.next(nextRequest);
-    }
-  }
-  
   return await context.next();
 }
 
@@ -47,6 +76,56 @@ function firstForwardedIp(xff) {
 
   const parts = xff.split(",").map((s) => s.trim()).filter(Boolean);
   return parts.length > 0 ? parts[0] : null;
+}
+
+function safeHeaderGet(getFn, headers, name) {
+  if (!getFn || !headers) {
+    return null;
+  }
+  try {
+    return getFn.call(headers, name);
+  } catch (_) {
+    return null;
+  }
+}
+
+function patchHeadersGetInstance(headers, clientIp) {
+  if (!headers || !clientIp) {
+    return false;
+  }
+
+  const originalGet = headers.get?.bind(headers);
+  if (!originalGet) {
+    return false;
+  }
+
+  const patchedGet = (name) => {
+    const lowerName = typeof name === "string" ? name.toLowerCase() : "";
+    if (lowerName === "cf-connecting-ip") {
+      return clientIp;
+    }
+    return originalGet(name);
+  };
+
+  try {
+    headers.get = patchedGet;
+    return true;
+  } catch (_) {
+    // ignore
+  }
+
+  try {
+    Object.defineProperty(headers, "get", {
+      value: patchedGet,
+      writable: true,
+      configurable: true,
+    });
+    return true;
+  } catch (_) {
+    // ignore
+  }
+
+  return false;
 }
 
 function ensureCfConnectingIpOverride(secretKey, trustedProxyIpsCsv) {
@@ -64,6 +143,9 @@ function ensureCfConnectingIpOverride(secretKey, trustedProxyIpsCsv) {
   }
 
   const originalGet = Headers.prototype.get;
+  if (!globalThis.__hazukiOriginalHeadersGet) {
+    globalThis.__hazukiOriginalHeadersGet = originalGet;
+  }
   try {
     Headers.prototype.get = function patchedGet(name) {
       const lowerName = typeof name === "string" ? name.toLowerCase() : "";
@@ -106,6 +188,7 @@ function ensureCfConnectingIpOverride(secretKey, trustedProxyIpsCsv) {
     globalThis.__hazukiPatchedHeadersGet = true;
   } catch (_) {
     // If the runtime prevents patching built-in prototypes, just skip.
+    globalThis.__hazukiPatchedHeadersGetError = "failed to patch Headers.prototype.get";
   }
 }
 
