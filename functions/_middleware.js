@@ -19,6 +19,7 @@ export async function onRequest(context) {
 
   if (isTrusted) {
     const clientIp =
+      safeHeaderGet(rawGet, request.headers, "x-hazuki-client-ip") ||
       safeHeaderGet(rawGet, request.headers, "x-real-ip") ||
       firstForwardedIp(safeHeaderGet(rawGet, request.headers, "x-forwarded-for"));
 
@@ -40,6 +41,7 @@ export async function onRequest(context) {
       headers: {
         cfConnectingIpRaw: rawCfIp,
         cfConnectingIpEffective: request.headers.get("cf-connecting-ip"),
+        xHazukiClientIp: safeHeaderGet(rawGet, request.headers, "x-hazuki-client-ip"),
         xRealIp: safeHeaderGet(rawGet, request.headers, "x-real-ip"),
         xForwardedFor: safeHeaderGet(rawGet, request.headers, "x-forwarded-for"),
       },
@@ -169,6 +171,11 @@ function ensureCfConnectingIpOverride(secretKey, trustedProxyIpsCsv) {
         }
 
         if (trusted) {
+          const hzClientIp = originalGet.call(this, "x-hazuki-client-ip");
+          if (hzClientIp) {
+            return hzClientIp;
+          }
+
           const xRealIp = originalGet.call(this, "x-real-ip");
           if (xRealIp) {
             return xRealIp;
