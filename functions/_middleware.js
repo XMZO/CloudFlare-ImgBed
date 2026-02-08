@@ -28,40 +28,6 @@ export async function onRequest(context) {
     }
   }
 
-  if (url.pathname === "/_hazuki/debug/headers") {
-    if (!isTrusted) {
-      return new Response(null, { status: 404 });
-    }
-
-    const payload = {
-      ok: true,
-      host: hostname,
-      isFromWorker: !!isFromWorker,
-      trustedByIp,
-      headers: {
-        cfConnectingIpRaw: rawCfIp,
-        cfConnectingIpEffective: request.headers.get("cf-connecting-ip"),
-        xHazukiClientIp: safeHeaderGet(rawGet, request.headers, "x-hazuki-client-ip"),
-        xRealIp: safeHeaderGet(rawGet, request.headers, "x-real-ip"),
-        xForwardedFor: safeHeaderGet(rawGet, request.headers, "x-forwarded-for"),
-      },
-      debug: {
-        secretKeySet: !!SECRET_KEY,
-        workerKeyPresent: !!safeHeaderGet(rawGet, request.headers, "x-forwarded-by-worker"),
-        patchedHeadersGet: !!globalThis.__hazukiPatchedHeadersGet,
-        patchedHeadersGetError: globalThis.__hazukiPatchedHeadersGetError || "",
-      },
-    };
-
-    return new Response(JSON.stringify(payload, null, 2), {
-      status: 200,
-      headers: {
-        "content-type": "application/json; charset=utf-8",
-        "cache-control": "no-store",
-      },
-    });
-  }
-
   if (hostname.endsWith('.pages.dev') && !isFromWorker) {
     return new Response(null, {
       status: 444
