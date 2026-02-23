@@ -71,6 +71,59 @@ export function sanitizeFileName(fileName) {
     return fileName.replace(unsafeCharsRe, '_');
 }
 
+/**
+ * 上传路径安全处理：防止路径穿越，标准化特殊字符
+ * @param {string} folder - 原始上传路径
+ * @returns {string} 安全处理后的路径
+ */
+export function sanitizeUploadFolder(folder) {
+    if (!folder || folder.trim() === '') {
+        return '';
+    }
+
+    // 防止编码绕过：如果检测到 URL 编码字符（%XX），先解码再处理
+    // 注意：url.searchParams.get() 已经做过一次解码，这里是为了防御双重编码攻击（如 %252e%252e）
+    if (/%[0-9a-fA-F]{2}/.test(folder)) {
+        try {
+            folder = decodeURIComponent(folder);
+        } catch (e) {
+            // 解码失败（如 %zz 等非法编码）则使用原始值
+        }
+    }
+
+    // 移除路径穿越字符 ..
+    // 将 .. 替换为 _（无论是否在路径段中）
+    folder = folder.replace(/\.\./g, '_');
+
+    // 将单独的 . 路径段替换为 _（例如 /./）
+    // 处理方式：按 / 分割后，将纯 . 的段替换为 _
+    folder = folder.split('/').map(seg => seg === '.' ? '_' : seg).join('/');
+
+    // 替换反斜杠为正斜杠
+    folder = folder.replace(/\\/g, '/');
+
+    // 将连续斜杠替换为单个斜杠
+    folder = folder.replace(/\/{2,}/g, '/');
+
+    // 移除开头的 /
+    folder = folder.replace(/^\/+/, '');
+
+    // 移除末尾的 /
+    folder = folder.replace(/\/+$/, '');
+
+    // 对每个路径段进行特殊字符处理
+    const segments = folder.split('/');
+    const sanitizedSegments = segments
+        .map(seg => {
+            // 将路径段中的特殊字符替换为 _
+            // 特殊字符包括: \ : * ? " ' < > | 空格 ( ) [ ] { } # % ^ ` ~ ; @ & = + $ ,
+            return seg.replace(/[\\:\*\?"'<>\| \(\)\[\]\{\}#%\^`~;@&=\+\$,]/g, '_');
+        })
+        .filter(seg => seg.length > 0); // 过滤空段
+
+    return sanitizedSegments.join('/');
+}
+
 // 检查文件扩展名是否有效
 export function isExtValid(fileExt) {
     return ['jpeg', 'jpg', 'png', 'gif', 'webp',
@@ -80,6 +133,26 @@ export function isExtValid(fileExt) {
         'txt', 'md', 'json', 'xml', 'html', 'css', 'js', 'ts', 'go', 'java', 'php', 'py', 'rb', 'sh', 'bat', 'cmd', 'ps1', 'psm1', 'psd', 'ai', 'sketch', 'fig', 'svg', 'eps', 'zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'apk', 'exe', 'msi', 'dmg', 'iso', 'torrent', 'webp', 'ico', 'svg', 'ttf', 'otf', 'woff', 'woff2', 'eot', 'apk', 'crx', 'xpi', 'deb', 'rpm', 'jar', 'war', 'ear', 'img', 'iso', 'vdi', 'ova', 'ovf', 'qcow2', 'vmdk', 'vhd', 'vhdx', 'pvm', 'dsk', 'hdd', 'bin', 'cue', 'mds', 'mdf', 'nrg', 'ccd', 'cif', 'c2d', 'daa', 'b6t', 'b5t', 'bwt', 'isz', 'isz', 'cdi', 'flp', 'uif', 'xdi', 'sdi'
     ].includes(fileExt);
 }
+/**
+ * 从文件名和文件类型中解析出有效的文件扩展名
+ * @param {string} fileName - 文件名
+ * @param {string} fileType - MIME 类型，如 'image/png'
+ * @returns {string} 文件扩展名
+ */
+export function resolveFileExt(fileName, fileType = 'application/octet-stream') {
+    let fileExt = fileName.split('.').pop();
+    if (fileExt && fileExt !== fileName && isExtValid(fileExt)) {
+        return fileExt;
+    }
+    // 文件名中无有效扩展名，尝试从 MIME 类型中提取
+    const typePart = fileType.split('/').pop();
+    if (typePart && typePart !== fileType) {
+        return typePart;
+    }
+    return 'bin';
+}
+
+
 
 /**
  * 从图片文件头部提取尺寸信息
@@ -271,7 +344,7 @@ export async function endUpload(context, fileId, metadata) {
 
     // 清除CDN缓存
     const cdnUrl = `https://${url.hostname}/file/${fileId}`;
-    const normalizedFolder = (url.searchParams.get('uploadFolder') || '').replace(/^\/+/, '').replace(/\/{2,}/g, '/').replace(/\/$/, '');
+    const normalizedFolder = sanitizeUploadFolder(url.searchParams.get('uploadFolder') || '');
     await purgeCDNCache(env, cdnUrl, url, normalizedFolder);
 
     // 更新文件索引（索引更新时会自动计算容量统计）
@@ -317,26 +390,12 @@ export async function buildUniqueFileId(context, fileName, fileType = 'applicati
     const { env, url } = context;
     const db = getDatabase(env);
 
-    let fileExt = fileName.split('.').pop();
-    if (!fileExt || fileExt === fileName) {
-        fileExt = fileType.split('/').pop();
-        if (fileExt === fileType || fileExt === '' || fileExt === null || fileExt === undefined) {
-            fileExt = 'unknown';
-        }
-    }
+    const fileExt = resolveFileExt(fileName, fileType);
 
     const nameType = url.searchParams.get('uploadNameType') || 'default';
     const uploadFolder = url.searchParams.get('uploadFolder') || '';
-    const normalizedFolder = uploadFolder
-        ? uploadFolder.replace(/^\/+/, '').replace(/\/{2,}/g, '/').replace(/\/$/, '')
-        : '';
-
-    if (!isExtValid(fileExt)) {
-        fileExt = fileType.split('/').pop();
-        if (fileExt === fileType || fileExt === '' || fileExt === null || fileExt === undefined) {
-            fileExt = 'unknown';
-        }
-    }
+    // 对上传路径进行安全处理
+    const normalizedFolder = sanitizeUploadFolder(uploadFolder);
 
     // 处理文件名，移除特殊字符
     fileName = sanitizeFileName(fileName);

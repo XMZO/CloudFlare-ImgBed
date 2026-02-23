@@ -13,7 +13,7 @@
 import { HuggingFaceAPI } from '../../utils/huggingfaceAPI.js';
 import { fetchUploadConfig } from '../../utils/sysConfig.js';
 import { userAuthCheck, UnauthorizedResponse } from '../../utils/userAuth.js';
-import { buildUniqueFileId } from '../../upload/uploadTools.js';
+import { buildUniqueFileId, getUploadIp, isBlockedUploadIp } from '../uploadTools.js';
 
 export async function onRequestPost(context) {
     const { request, env } = context;
@@ -27,12 +27,21 @@ export async function onRequestPost(context) {
             return UnauthorizedResponse('Unauthorized');
         }
 
+        // 检查上传IP是否被封禁
+        const uploadIp = getUploadIp(request);
+        if (await isBlockedUploadIp(env, uploadIp)) {
+            return new Response(JSON.stringify({ error: 'IP blocked' }), {
+                status: 403,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
         const body = await request.json();
         const { fileSize, fileName, fileType, sha256, fileSample, channelName, uploadNameType, uploadFolder } = body;
 
-        if (!fileSize || !fileName || !sha256 || !fileSample) {
+        if (!fileSize || !fileName || !fileType || !sha256 || !fileSample) {
             return new Response(JSON.stringify({
-                error: 'Missing required fields: fileSize, fileName, sha256, fileSample'
+                error: 'Missing required fields: fileSize, fileName, fileType, sha256, fileSample'
             }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
