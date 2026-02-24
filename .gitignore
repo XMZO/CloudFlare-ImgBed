@@ -6,3 +6,5 @@ wrangler.toml
 
 .kiro/
 .vscode/
+chunkUpload.js.new
+functions/upload/chunkUpload.js.new
