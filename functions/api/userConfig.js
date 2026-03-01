@@ -1,29 +1,23 @@
-import { fetchPageConfig, fetchSecurityConfig } from "../utils/sysConfig";
+import { fetchPageConfig } from "../utils/sysConfig";
 
 export async function onRequest(context) {
-    const { request, env, params, waitUntil, next, data } = context;
+    const { env } = context;
     const PageConfig = await fetchPageConfig(env);
     const userConfigList = PageConfig.config;
     const userConfig = {};
     
     for (const config of userConfigList) {
-        if (config.value) {
+        if (config.value !== undefined && config.value !== null && config.value !== '') {
             // 将config解析为JSON对象，若解析失败则返回原始字符串
             try {
                 userConfig[config.id] = JSON.parse(config.value);
             } catch (error) {
                 userConfig[config.id] = config.value;
             }
+        } else if (config.type === 'boolean' && config.default !== undefined) {
+            // 布尔类型使用默认值
+            userConfig[config.id] = config.default;
         }
-    }
-
-    // 从安全配置中获取 showDirectorySuggestions 设置
-    try {
-        const securityConfig = await fetchSecurityConfig(env);
-        userConfig.showDirectorySuggestions = securityConfig.upload?.showDirectorySuggestions ?? false;
-    } catch (error) {
-        console.error('Failed to fetch showDirectorySuggestions:', error);
-        userConfig.showDirectorySuggestions = false;
     }
 
     // 检查 USER_CONFIG 是否为空或未定义

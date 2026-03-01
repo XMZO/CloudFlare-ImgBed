@@ -1,6 +1,6 @@
 import { getDirectoryTree } from '../utils/indexManager';
 import { dualAuthCheck } from '../utils/dualAuth';
-import { fetchSecurityConfig } from '../utils/sysConfig';
+import { fetchPageConfig } from '../utils/sysConfig';
 
 /**
  * 目录树 API 端点
@@ -29,8 +29,10 @@ export async function onRequestGet(context) {
     
     // 如果是用户端鉴权，检查 showDirectorySuggestions 设置
     if (authResult.authType === 'user') {
-        const securityConfig = await fetchSecurityConfig(env);
-        const showDirectorySuggestions = securityConfig?.upload?.showDirectorySuggestions ?? true;
+        const pageConfig = await fetchPageConfig(env);
+        // 从 config 数组中查找 showDirectorySuggestions 设置
+        const showDirSetting = pageConfig.config?.find(c => c.id === 'showDirectorySuggestions');
+        const showDirectorySuggestions = showDirSetting?.value ?? showDirSetting?.default ?? true;
         
         if (!showDirectorySuggestions) {
             return new Response(JSON.stringify({ error: 'Directory suggestions disabled' }), {

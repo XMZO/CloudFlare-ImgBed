@@ -108,6 +108,14 @@ export async function getPageConfig(db, env) {
             category: '客户端设置',
         },
         {
+            id: 'showDirectorySuggestions',
+            label: '目录候选项',
+            type: 'boolean',
+            default: true,
+            tooltip: '控制上传页面是否展示目录树选择器',
+            category: '客户端设置',
+        },
+        {
             id: 'defaultUploadChannel',
             label: '默认渠道类型',
             type: 'select',
@@ -172,7 +180,7 @@ export async function getPageConfig(db, env) {
         },
         {
             id: 'defaultCompressQuality',
-            label: '默认期望大小',
+            label: '默认压缩期望',
             placeholder: '4',
             tooltip: '压缩后图片大小期望值，单位MB，范围0.5-压缩阈值',
             category: '客户端设置',
@@ -213,7 +221,7 @@ export async function getPageConfig(db, env) {
             label: '管理页背景图',
             tooltip: '1.填写 bing 使用必应壁纸轮播 <br/> 2.填写 ["url1","url2"] 使用多张图片轮播 <br/> 3.填写 ["url"] 使用单张图片',
             category: '管理端设置',
-        }
+        },
     )
 
     const userConfig = env.USER_CONFIG
