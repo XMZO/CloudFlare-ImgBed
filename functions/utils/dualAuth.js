@@ -2,6 +2,8 @@ import { userAuthCheck } from './userAuth';
 import { fetchSecurityConfig } from './sysConfig';
 import { validateApiToken } from './tokenValidator';
 import { getDatabase } from './databaseAdapter.js';
+import { verifyPassword, needsRehash, hashPassword } from './passwordHash.js';
+import { validateSession } from './sessionManager.js';
 
 /**
  * 双重鉴权检查：管理端或用户端任意一个通过即可
@@ -43,6 +45,12 @@ async function adminAuthCheck(env, request) {
     if (typeof basicUser === 'undefined' || basicUser === null || basicUser === '') {
         return true;
     }
+
+    // 检查会话 Cookie
+    const sessionResult = await validateSession(env, request, 'admin');
+    if (sessionResult.valid) {
+        return true;
+    }
     
     // 检查是否有 Authorization 头
     if (!request.headers.has('Authorization')) {
@@ -59,7 +67,29 @@ async function adminAuthCheck(env, request) {
     // 尝试 Basic Auth 验证
     try {
         const { user, pass } = parseBasicAuth(request);
-        return user === basicUser && pass === basicPass;
+        const passwordMatch = await verifyPassword(pass, basicPass);
+        if (user !== basicUser || !passwordMatch) {
+            return false;
+        }
+
+        // 验证通过后，如果密码使用旧版哈希或明文存储，自动升级为 PBKDF2
+        if (needsRehash(basicPass) || !basicPass.startsWith('$pbkdf2$')) {
+            try {
+                const rehashDb = getDatabase(env);
+                const settingsStr = await rehashDb.get('manage@sysConfig@security');
+                if (settingsStr) {
+                    const settings = JSON.parse(settingsStr);
+                    if (settings.auth?.admin) {
+                        settings.auth.admin.adminPassword = await hashPassword(pass);
+                        await rehashDb.put('manage@sysConfig@security', JSON.stringify(settings));
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to rehash admin password:', e);
+            }
+        }
+
+        return true;
     } catch {
         return false;
     }

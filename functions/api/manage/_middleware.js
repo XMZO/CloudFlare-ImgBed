@@ -2,6 +2,8 @@ import { fetchSecurityConfig } from "../../utils/sysConfig";
 import { checkDatabaseConfig } from "../../utils/middleware";
 import { validateApiToken } from "../../utils/tokenValidator";
 import { getDatabase } from "../../utils/databaseAdapter.js";
+import { verifyPassword, needsRehash, hashPassword } from "../../utils/passwordHash.js";
+import { validateSession } from "../../utils/sessionManager.js";
 
 let securityConfig = {}
 let basicUser = ""
@@ -124,8 +126,14 @@ async function authentication(context) {
     return context.next();
   } else {
 
+    // 1. 优先检查会话 Cookie
+    const sessionResult = await validateSession(context.env, context.request, 'admin');
+    if (sessionResult.valid) {
+      return context.next();
+    }
+
     if (context.request.headers.has('Authorization')) {
-      // 首先尝试使用API Token验证
+      // 2. 尝试使用API Token验证
 
       // 根据请求的 url 判断所需权限
       const pathname = new URL(context.request.url).pathname;
@@ -138,24 +146,36 @@ async function authentication(context) {
         return context.next();
       }
 
-      // 回退到使用传统身份认证方式
+      // 3. 回退到使用传统 Basic Auth 身份认证方式
       const { user, pass } = basicAuthentication(context.request);
-      if (basicUser !== user || basicPass !== pass) {
+      const passwordMatch = await verifyPassword(pass, basicPass);
+      if (basicUser !== user || !passwordMatch) {
         return UnauthorizedException('Invalid credentials.');
-      } else {
-        return context.next();
       }
 
+      // Basic Auth 验证通过后，如果密码使用旧版哈希或明文存储，自动升级为 PBKDF2
+      if (passwordMatch && (needsRehash(basicPass) || !basicPass.startsWith('$pbkdf2$'))) {
+        try {
+          const db = getDatabase(context.env);
+          const settingsStr = await db.get('manage@sysConfig@security');
+          if (settingsStr) {
+            const settings = JSON.parse(settingsStr);
+            if (settings.auth?.admin) {
+              settings.auth.admin.adminPassword = await hashPassword(pass);
+              await db.put('manage@sysConfig@security', JSON.stringify(settings));
+            }
+          }
+        } catch (e) {
+          // rehash 失败不影响登录流程
+          console.error('Failed to rehash admin password:', e);
+        }
+      }
+
+      return context.next();
+
     } else {
-      // 要求客户端进行基本认证
-      return new Response('You need to login.', {
-        status: 401,
-        headers: {
-          // Prompts the user for credentials.
-          'WWW-Authenticate': 'Basic realm="my scope", charset="UTF-8"',
-          // 'WWW-Authenticate': 'None',
-        },
-      });
+      // 没有 Authorization 头也没有有效 session，返回 401
+      return UnauthorizedException('You need to login.');
     }
 
   }
