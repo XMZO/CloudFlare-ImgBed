@@ -11,3 +11,5 @@ node_modules
 .vscode/
 .claude/
 .agents/
+
+/worker.js.bak
