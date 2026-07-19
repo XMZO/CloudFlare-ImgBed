@@ -1,7 +1,7 @@
 <div align="center">
     <a href="https://github.com/MarSeventh/CloudFlare-ImgBed"><img width="80%" alt="logo" src="readme/banner.png" /></a>
-    <p><em>🗂️Open-source file hosting solution, supporting Docker and serverless deployment, supporting multiple storage channels such as Telegram, Discord, Cloudflare R2, S3, Huggingface, WebDAV, etc., providing RESTful APIs and WebDAV support.</em></p>
-    <p >
+    <p><em>🗂️ An open-source file hosting solution for Docker and serverless environments, with multiple storage backends, a RESTful API, and WebDAV support.</em></p>
+    <p>
         <a href="https://github.com/MarSeventh/CloudFlare-ImgBed/blob/main/README_zh.md">简体中文</a> | <a href="https://github.com/MarSeventh/CloudFlare-ImgBed/blob/main/README.md">English</a> | <a href="https://cfbed.sanyue.de/en">Official Website</a>
     </p>
     <p align="center">
@@ -19,10 +19,6 @@
     </p>
 </div>
 
-
-
-
-
 ---
 
 > [!IMPORTANT]
@@ -30,23 +26,19 @@
 > **If you encounter issues, please check the [announcement](https://github.com/MarSeventh/CloudFlare-ImgBed/discussions/categories/announcements) first. Important notifications and non-compatible updates will be explained in the announcement!**
 
 
-# 1. Introduction
+# 1. 💡 Introduction
 
-CloudFlare-ImgBed is an open-source file hosting solution compatible with both Docker and Serverless dual-stack deployments, featuring support for multiple backend storage channels. It not only provides fundamental features covering the entire file lifecycle—such as **uploading**, **managing**, **reading**, and **deleting**—but also offers advanced capabilities including **authentication**, **directory organization**, **content moderation**, and **random images**. Supported by a comprehensive RESTful API and WebDAV integration, it is perfectly suited for self-hosted image hosting, static site asset management, and lightweight file distribution scenarios. You can see [Feature Docs](https://cfbed.sanyue.de/en/guide/features.html) for details.
+CloudFlare ImgBed is an open-source file hosting solution that supports both Docker and serverless deployments, with multiple backend storage options, including **Telegram**, **Discord**, **Cloudflare R2**, **S3-compatible storage**, **Hugging Face**, **WebDAV**, and more.
+
+It provides essential features covering the entire file lifecycle—including **uploading**, **managing**, **reading**, and **deleting**—along with **authentication**, **directory organization**, **content moderation**, and **random images**. With a comprehensive RESTful API and WebDAV support, it is well suited for self-hosted image hosting, static site asset management, and lightweight file distribution. See the [feature documentation](https://cfbed.sanyue.de/en/guide/features.html) for details.
 
 ![CloudFlare](readme/海报.png)
 
-# 2. [Document](https://cfbed.sanyue.de/en)
+# 2. 🖥️ Demo
 
-Provides detailed deployment documentation, feature docs, development plans, update logs, FAQ, and more to help you get started quickly.
+**Demo Address**: [CloudFlare ImgBed](https://cfbed.1314883.xyz/) · **Access Password**: `cfbed`
 
-[![recent update](https://recent-update.cfbed.sanyue.de/en)](https://cfbed.sanyue.de/en/guide/update-log.html)
-
-# 3. Demo
-
-**Demo Address**: [CloudFlare ImgBed](https://cfbed.1314883.xyz/) Access Password: `cfbed`
-
-![image-20250313204138886](readme/upload.png)
+![Upload Page](readme/upload.png)
 
 <details>
     <summary>Other page screenshots</summary>
@@ -86,38 +78,70 @@ Provides detailed deployment documentation, feature docs, development plans, upd
 
 </details>
 
-# 4. Ecosystem
+# 3. 📚 Documentation & Updates
 
-Open source ecosystem development cannot be separated from everyone's support. Everyone is welcome to visit the [CloudFlare ImgBed Ecosystem Building](https://cfbed.sanyue.de/en/about/ecosystem.html) page for more information. Our ecosystem building section includes but is not limited to the following content:
+## 📖 Documentation
 
-- **Excellent Plugin Extensions**: Browser plugins; extensions for well-known platforms like Typecho, WordPress, Obsidian; OpenList drivers, etc.
-- **Rich Peripheral Applications**: Desktop clients, bot support tools, etc.
-- **AI Intelligent Agent Applications**: Official skills for the project, etc.
-- **High-Quality Tutorial Content**: High-quality videos and articles from various self-media creators.
+The documentation covers deployment, storage configuration, feature usage, RESTful API integration, WebDAV, version upgrades, and troubleshooting. Whether you are deploying the project for the first time or maintaining an existing instance, you can find the relevant instructions here.
 
-You can not only find the plugins, applications, and tutorials you like here, but you can also share your own works here. For sharing guidelines, please refer to the instructions in the [Ecosystem Building Call for Contributions](https://github.com/MarSeventh/CloudFlare-ImgBed/discussions/606). We look forward to everyone actively participating in our ecosystem building!
+**[Read the full documentation →](https://cfbed.sanyue.de/en)**
 
-# 5. Tips
+## 📝 Changelog
 
-- Frontend is open source, see [MarSeventh/Sanyue-ImgHub](https://github.com/MarSeventh/Sanyue-ImgHub).
+Follow the latest features, bug fixes, compatibility changes, and upgrade notes.
 
-- Desktop software is open source, see [MarSeventh/satellite](https://github.com/MarSeventh/satellite).
+[![Recent Updates](https://recent-update.cfbed.sanyue.de/en)](https://cfbed.sanyue.de/en/guide/update-log.html)
 
-- **Sponsor**: Maintaining the project is not easy. If you like it, please support the author. Your support is the motivation to keep going~
+# 4. 🌱 Ecosystem
 
-  <a href="https://afdian.com/a/marseventh"><img src="https://img.shields.io/badge/AFDIAN-946CE6?style=for-the-badge&logo=afdian&logoColor=white" height="36" alt="Afdian"></a>&nbsp;&nbsp;<a href="readme/weixin-reward.png" target="_blank"><img src="https://img.shields.io/badge/WeChat_Pay-07c160?style=for-the-badge&logo=wechat&logoColor=white" height="36" alt="WeChat Pay"></a>
-  
-- **Sponsors**: Thanks to the following sponsors for supporting this project!
+An open-source ecosystem grows through community support. Visit the [CloudFlare ImgBed Ecosystem](https://cfbed.sanyue.de/en/about/ecosystem.html) page to explore the following resources and more:
 
-  [![sponsors](https://afdian-sponsors.sanyue.de/image?columns=12)](https://afdian.com/a/marseventh)
-  
-- **Contributors**: Thanks to the following contributors for their selfless contributions!
+- **Plugin Extensions**: Browser extensions, integrations for Typecho, WordPress, and Obsidian, OpenList drivers, and more.
+- **Companion Applications**: Desktop clients, bot tools, and more.
+- **AI Agent Applications**: Official project skills and related tools.
+- **Tutorials and Guides**: High-quality videos and articles from content creators.
 
-  [![Contributors](https://contrib.rocks/image?repo=Marseventh/Cloudflare-ImgBed)](https://github.com/MarSeventh/CloudFlare-ImgBed/graphs/contributors)
+Discover useful plugins, applications, and tutorials, or share your own work with the community. See the [Ecosystem Call for Contributions](https://github.com/MarSeventh/CloudFlare-ImgBed/discussions/606) for submission guidelines. We look forward to your participation!
 
-# 6. Star History
+# 5. 💝 Support & Partners
 
-**If you like the project, please give a free star✨✨✨, thank you very much!**
+## ☕ Support the Project
+
+Maintaining an open source project takes time and effort. If CloudFlare ImgBed has helped you, consider supporting its continued development.
+
+<p align="center">
+  <a href="https://afdian.com/a/marseventh"><img src="https://img.shields.io/badge/AFDIAN-946CE6?style=for-the-badge&logo=afdian&logoColor=white" height="36" alt="Support via Afdian"></a>
+  &nbsp;&nbsp;
+  <a href="readme/weixin-reward.png"><img src="https://img.shields.io/badge/WeChat_Pay-07C160?style=for-the-badge&logo=wechat&logoColor=white" height="36" alt="Support via WeChat Pay"></a>
+</p>
+
+## 💖 Sponsors
+
+Thank you to every sponsor who supports this project! Your support helps sustain ongoing maintenance and drives the continued improvement of CloudFlare ImgBed.
+
+[![Sponsors](https://afdian-sponsors.sanyue.de/image?columns=12)](https://afdian.com/a/marseventh)
+
+## 🤝 Partners
+
+- **[Cloudflare](https://www.cloudflare.com/) & [EdgeOne](https://edgeone.ai/?from=github)**: CDN acceleration and security protection
+
+  <a href="https://www.cloudflare.com/"><img src="readme/cloudflare-logo.png" alt="Cloudflare Logo" height="25"></a> <a href="https://edgeone.ai/?from=github"><img src="readme/edgeone-logo.png" alt="EdgeOne Logo" height="25"></a>
+
+- **[Svyun](https://www.svyun.com/recommend/AELZ0UeMz8K11Zg7pEXC)**: Cloud computing resources
+
+- **[Linux DO](https://linux.do/)**: Community support
+
+# 6. 👥 Community
+
+## 🧑‍💻 Contributors
+
+Thank you to everyone who has contributed code, documentation, ideas, and feedback!
+
+[![Contributors](https://contrib.rocks/image?repo=Marseventh/Cloudflare-ImgBed)](https://github.com/MarSeventh/CloudFlare-ImgBed/graphs/contributors)
+
+## ⭐ Star History
+
+**If you find the project useful, please consider giving it a Star ⭐. Thank you for your support!**
 
 <a href="https://www.star-history.com/?repos=MarSeventh%2FCloudFlare-ImgBed%2CMarSeventh%2FSanyue-ImgHub&type=date&legend=top-left">
  <picture>
@@ -127,18 +151,17 @@ You can not only find the plugins, applications, and tutorials you like here, bu
  </picture>
 </a>
 
-# 7. Special Sponsors
+# 7. ⚖️ License & Related Projects
 
-- **[CloudFlare](https://www.cloudflare.com/) & [EdgeOne](https://edgeone.ai/?from=github)**: Provides CDN acceleration, and security protection
+## 📄 License
 
-  <a href="https://www.cloudflare.com"><img src="readme/cloudflare-logo.png" alt="Cloudflare Logo" height="25"></a> <a href="https://edgeone.ai/?from=github"><img src="readme/edgeone-logo.png" alt="Tencent Logo" height="25"></a>
+> [!IMPORTANT]
+> This project is licensed under the [MIT License](LICENSE). You may use, modify, and distribute it, provided that the original copyright and license notices are retained in all copies or substantial portions of the software.
 
-- **[Svyun](https://www.svyun.com/recommend/AELZ0UeMz8K11Zg7pEXC)**: Provides cloud computing resources support
+## 🔗 Related Open Source Projects
 
-- **[Linux DO](https://linux.do/)**: New Ideal Community
+- **Web frontend**: [MarSeventh/Sanyue-ImgHub](https://github.com/MarSeventh/Sanyue-ImgHub)
+- **Desktop client**: [MarSeventh/satellite](https://github.com/MarSeventh/satellite)
+- **Upstream project**: [cf-pages/Telegraph-Image](https://github.com/cf-pages/Telegraph-Image)
 
-# 8. License
-
-This project is licensed under the [MIT License](https://github.com/MarSeventh/CloudFlare-ImgBed/blob/main/LICENSE). You can use, modify, and distribute the project freely as long as the original **copyright notice** is retained in **all copies or substantial portions** of the software.
-
-This project is a secondary development based on the [Telegraph-Image](https://github.com/cf-pages/Telegraph-Image) project.
+CloudFlare ImgBed evolved from Telegraph-Image. Thanks to its original authors and contributors.

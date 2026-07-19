@@ -1,6 +1,6 @@
 <div align="center">
     <a href="https://github.com/MarSeventh/CloudFlare-ImgBed"><img width="80%" alt="logo" src="readme/banner.png" /></a>
-    <p><em>🗂️开源文件托管解决方案，支持 Docker 和无服务器部署，支持 Telegram、Discord、Cloudflare R2、S3、Huggingface、WebDAV 等多种存储渠道，提供 RESTful APIs 和 WebDAV 支持</em></p>
+    <p><em>🗂️ 支持 Docker 与 Serverless 部署的开源文件托管方案，兼容多种存储后端，并提供 RESTful API 与 WebDAV 支持。</em></p>
     <p>
         <a href="https://github.com/MarSeventh/CloudFlare-ImgBed/blob/main/README_zh.md">简体中文</a> | <a href="https://github.com/MarSeventh/CloudFlare-ImgBed/blob/main/README.md">English</a> | <a href="https://cfbed.sanyue.de">官方网站</a>
     </p>
@@ -19,11 +19,6 @@
     </p>
 </div>
 
-
-
-
-
-
 ---
 
 > [!IMPORTANT]
@@ -31,23 +26,19 @@
 > **遇到问题请务必先查看[公告](https://github.com/MarSeventh/CloudFlare-ImgBed/discussions/categories/announcements)，重要通知和非兼容性更新内容均会在公告中说明！**
 
 
-# 1. Introduction
+# 1. 💡 项目介绍
 
-CloudFlare-ImgBed 是一个兼容 Docker 和 Serverless 双栈部署，支持多种后端存储渠道的开源文件托管解决方案，不仅具备**上传**、**管理**、**读取**、**删除**等覆盖文件全生命周期的基础功能，还提供**身份认证**、**目录组织**、**内容审核**、**随机图**等能力以及完整的 RESTful API 与 WebDAV 支持，适合自建图床、静态站资源管理和轻量文件分发场景。详见[功能文档](https://cfbed.sanyue.de/guide/features.html)。
+CloudFlare ImgBed 是一个同时支持 Docker 与 Serverless 部署的开源文件托管解决方案，可接入的存储渠道包括 **Telegram**、**Discord**、**Cloudflare R2**、**S3 兼容存储**、**Hugging Face**、**WebDAV** 等。
+
+它不仅具备**上传**、**管理**、**读取**、**删除**等覆盖文件全生命周期的基础功能，还提供**身份认证**、**目录组织**、**内容审核**、**随机图**等能力，以及完整的 RESTful API 与 WebDAV 支持，适用于自建图床、静态站资源管理和轻量文件分发场景。详见[功能文档](https://cfbed.sanyue.de/guide/features.html)。
 
 ![CloudFlare](readme/海报.png)
 
-# 2. [Document](https://cfbed.sanyue.de)
+# 2. 🖥️ 在线演示
 
-提供详细的部署文档、功能文档、开发计划、更新日志、常见问题解答等，帮助您快速上手。
+**演示站点**：[CloudFlare ImgBed](https://cfbed.1314883.xyz/) · **访问密码**：`cfbed`
 
-[![更新日志](https://recent-update.cfbed.sanyue.de/cn)](https://cfbed.sanyue.de/guide/update-log.html)
-
-# 3. Demo
-
-**演示站点**：[CloudFlare ImgBed](https://cfbed.1314883.xyz/) 访问密码：`cfbed`
-
-![image-20250313204101984](readme/upload.png)
+![文件上传页面](readme/upload.png)
 
 <details>
     <summary>其他页面效果展示</summary>
@@ -87,39 +78,70 @@ CloudFlare-ImgBed 是一个兼容 Docker 和 Serverless 双栈部署，支持多
 
 </details>
 
-# 4. Ecosystem
+# 3. 📚 文档与更新
 
-开源生态的发展离不开所有人的支持，欢迎大家前往[CloudFlare ImgBed 生态建设](https://cfbed.sanyue.de/about/ecosystem.html)页面了解更多信息，我们的生态建设版块包括但不限于以下内容：
+## 📖 项目文档
 
-- **优秀的插件扩展**：浏览器插件；Typecho、WordPress、Obsidian 等知名平台扩展插件；OpenList 驱动等
-- **丰富的周边应用**：桌面客户端、bot 辅助工具等
-- **AI 智能体应用**：项目官方 skill 等
-- **优质的教程内容**：各大自媒体创作者的优质视频、文字教程
+项目文档涵盖部署方式、存储渠道配置、功能使用、RESTful API、WebDAV、版本升级及常见问题等内容。无论是首次部署还是日常维护，都可以在文档中找到对应的操作说明。
 
-您不仅能在这里找到您心仪的插件、应用、教程，还可以在这里分享您自己的作品，分享请参考[生态建设征集令](https://github.com/MarSeventh/CloudFlare-ImgBed/discussions/606)的说明，期待大家积极参与到我们的生态建设中来！
+**[查看完整文档 →](https://cfbed.sanyue.de)**
 
-# 5. Tips
+## 📝 更新日志
 
-- **前端开源**：参见[MarSeventh/Sanyue-ImgHub](https://github.com/MarSeventh/Sanyue-ImgHub)项目。
+了解项目的最新功能、问题修复、兼容性变更和升级注意事项。
 
-- **桌面端开源**：参见[MarSeventh/satellite](https://github.com/MarSeventh/satellite)项目。
+[![更新日志](https://recent-update.cfbed.sanyue.de/cn)](https://cfbed.sanyue.de/guide/update-log.html)
 
-- **赞助**：项目维护不易，喜欢本项目的话，可以作者大大一点小小的鼓励哦，您的每一份支持都是我前进的动力\~ 
+# 4. 🌱 项目生态
 
+欢迎前往 [CloudFlare ImgBed 生态](https://cfbed.sanyue.de/about/ecosystem.html)，探索社区提供的扩展、应用和教程，包括：
 
-  <a href="https://afdian.com/a/marseventh"><img src="https://img.shields.io/badge/AFDIAN-946CE6?style=for-the-badge&logo=afdian&logoColor=white" height="36" alt="Afdian"></a>&nbsp;&nbsp;<a href="readme/weixin-reward.png" target="_blank"><img src="https://img.shields.io/badge/WeChat_Pay-07c160?style=for-the-badge&logo=wechat&logoColor=white" height="36" alt="WeChat Pay"></a>
+- **优秀的插件扩展**：浏览器扩展，Typecho、WordPress、Obsidian 等平台的集成插件，OpenList 驱动等
+- **丰富的周边应用**：桌面客户端、Bot 辅助工具等
+- **AI 智能体应用**：项目官方 Skill 及相关工具
+- **优质的教程内容**：内容创作者分享的优质视频和图文教程
 
-- **Sponsors**：感谢以下赞助者对本项目的支持！
+您也可以向社区分享自己的作品，提交规范请参见[生态建设征集令](https://github.com/MarSeventh/CloudFlare-ImgBed/discussions/606)，期待您的参与！
 
-  [![赞助者](https://afdian-sponsors.sanyue.de/image?columns=12)](https://afdian.com/a/marseventh)
-  
-- **Contributors**：感谢以下贡献者对本项目的无私贡献！
+# 5. 💝 支持与合作伙伴
 
-  [![Contributors](https://contrib.rocks/image?repo=Marseventh/Cloudflare-ImgBed)](https://github.com/MarSeventh/CloudFlare-ImgBed/graphs/contributors)
+## ☕ 支持项目
 
-# 6. Star History
+开源项目的维护需要持续投入时间和精力。如果 CloudFlare ImgBed 对您有所帮助，欢迎支持项目持续发展。
 
-**如果觉得项目不错希望您能给个免费的 star✨✨✨，非常感谢！**
+<p align="center">
+  <a href="https://afdian.com/a/marseventh"><img src="https://img.shields.io/badge/爱发电-946CE6?style=for-the-badge&logo=afdian&logoColor=white" height="36" alt="通过爱发电支持"></a>
+  &nbsp;&nbsp;
+  <a href="readme/weixin-reward.png"><img src="https://img.shields.io/badge/微信赞赏-07C160?style=for-the-badge&logo=wechat&logoColor=white" height="36" alt="通过微信赞赏支持"></a>
+</p>
+
+## 💖 赞助者
+
+感谢每一位赞助者对本项目的支持！您的支持帮助项目持续维护，也为 CloudFlare ImgBed 的长期改进提供动力。
+
+[![赞助者](https://afdian-sponsors.sanyue.de/image?columns=12)](https://afdian.com/a/marseventh)
+
+## 🤝 合作伙伴
+
+- **[Cloudflare](https://www.cloudflare.com/) & [EdgeOne](https://edgeone.ai/?from=github)**：提供 CDN 加速及安全防护
+
+  <a href="https://www.cloudflare.com/"><img src="readme/cloudflare-logo.png" alt="Cloudflare Logo" height="25"></a> <a href="https://edgeone.ai/?from=github"><img src="readme/edgeone-logo.png" alt="EdgeOne Logo" height="25"></a>
+
+- **[速维云](https://www.svyun.com/recommend/AELZ0UeMz8K11Zg7pEXC)**：提供云计算资源
+
+- **[Linux DO](https://linux.do/)**：提供社区支持
+
+# 6. 👥 项目社区
+
+## 🧑‍💻 贡献者
+
+感谢所有为项目贡献代码、文档、创意和反馈的开发者！
+
+[![贡献者](https://contrib.rocks/image?repo=Marseventh/Cloudflare-ImgBed)](https://github.com/MarSeventh/CloudFlare-ImgBed/graphs/contributors)
+
+## ⭐ Star 趋势
+
+**如果这个项目对您有所帮助，欢迎点亮一个 Star ⭐，感谢您的支持！**
 
 <a href="https://www.star-history.com/?repos=MarSeventh%2FCloudFlare-ImgBed%2CMarSeventh%2FSanyue-ImgHub&type=date&legend=top-left">
  <picture>
@@ -129,18 +151,17 @@ CloudFlare-ImgBed 是一个兼容 Docker 和 Serverless 双栈部署，支持多
  </picture>
 </a>
 
-# 7. Special Sponsors
+# 7. ⚖️ 开源协议与相关项目
 
-- **[CloudFlare](https://www.cloudflare.com) & [EdgeOne](https://edgeone.ai/?from=github)**：提供 CDN 加速和安全保护服务
+## 📄 开源协议
 
-  <a href="https://www.cloudflare.com"><img src="readme/cloudflare-logo.png" alt="Cloudflare Logo" height="25"></a> <a href="https://edgeone.ai/?from=github"><img src="readme/edgeone-logo.png" alt="Tencent Logo" height="25"></a>
+> [!IMPORTANT]
+> 本项目基于 [MIT License](LICENSE) 开源。您可以自由使用、修改和分发本项目，但须在软件的所有副本或重要部分中保留原始版权及许可声明。
 
-- **[速维云](https://www.svyun.com/recommend/AELZ0UeMz8K11Zg7pEXC)**：提供云计算服务资源支持
+## 🔗 相关开源项目
 
-- **[Linux DO](https://linux.do/)**：新的理想型社区
+- **Web 前端**：[MarSeventh/Sanyue-ImgHub](https://github.com/MarSeventh/Sanyue-ImgHub)
+- **桌面客户端**：[MarSeventh/satellite](https://github.com/MarSeventh/satellite)
+- **上游项目**：[cf-pages/Telegraph-Image](https://github.com/cf-pages/Telegraph-Image)
 
-# 8. License
-
-本项目基于 [MIT 协议](https://github.com/MarSeventh/CloudFlare-ImgBed/blob/main/LICENSE) 开源，您在符合协议的前提下可以自由使用、修改、分发本项目，但请保留原作者在**包括但不限于**前后端代码和其他文件在内的所有副本或重要部分中的**版权声明**。
-
-本项目基于 [Telegraph-Image](https://github.com/cf-pages/Telegraph-Image) 项目二次开发。
+CloudFlare ImgBed 由 Telegraph-Image 发展而来，感谢原项目作者及所有贡献者。
