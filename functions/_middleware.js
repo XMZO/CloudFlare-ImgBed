@@ -1,3 +1,7 @@
+// WebDAV PUT 会在 handler 内再次 POST 到基于 request.url 构造的 /upload；
+// /dav 重写后，上传正文会经 ACTUAL_ORIGIN 反代多传输一遍，以兼容 pages.dev 的 444 防护。
+const ACTUAL_ORIGIN_PATH_RE = /^(?:\/(?:upload|dav|random)(?:\/|$)|\/api\/public\/list(?:\/|$)|\/api\/manage\/(?:block|delete|move|rename|tags|white)(?:\/|$))/;
+
 export async function onRequest(context) {
   const { request, env } = context;
   const hostname = request.headers.get("host") ?? "";
@@ -16,9 +20,10 @@ export async function onRequest(context) {
   const trustedProxyIps = globalThis.__hazukiTrustedProxyIps;
   const trustedByIp = !!(trustedProxyIps && rawCfIp && trustedProxyIps.has(rawCfIp));
   const isTrusted = !!isFromWorker || trustedByIp;
+  let clientIp = null;
 
   if (isTrusted) {
-    const clientIp =
+    clientIp =
       safeHeaderGet(rawGet, request.headers, "x-hazuki-client-ip") ||
       safeHeaderGet(rawGet, request.headers, "x-real-ip") ||
       firstForwardedIp(safeHeaderGet(rawGet, request.headers, "x-forwarded-for"));
@@ -34,7 +39,62 @@ export async function onRequest(context) {
     });
   }
 
+  if (
+    isFromWorker &&
+    url.hostname.endsWith(".pages.dev") &&
+    ACTUAL_ORIGIN_PATH_RE.test(url.pathname)
+  ) {
+    const rewrittenRequest = createActualOriginRequest(request, url, env?.ACTUAL_ORIGIN);
+    if (rewrittenRequest) {
+      if (clientIp) {
+        patchHeadersGetInstance(rewrittenRequest.headers, clientIp);
+      }
+      try {
+        context.request = rewrittenRequest;
+      } catch (_) {}
+      return await context.next(rewrittenRequest);
+    }
+  }
+
   return await context.next();
+}
+
+function createActualOriginRequest(request, requestUrl, configuredOrigin) {
+  if (typeof configuredOrigin !== "string" || configuredOrigin.trim() === "") {
+    return null;
+  }
+
+  try {
+    const actualOrigin = new URL(configuredOrigin.trim());
+    if (
+      (actualOrigin.protocol !== "https:" && actualOrigin.protocol !== "http:") ||
+      !actualOrigin.hostname ||
+      actualOrigin.username ||
+      actualOrigin.password ||
+      requestUrl.origin === actualOrigin.origin
+    ) {
+      return null;
+    }
+
+    requestUrl.protocol = actualOrigin.protocol;
+    requestUrl.host = actualOrigin.host;
+    const rewrittenRequest = new Request(requestUrl.toString(), request);
+    try {
+      rewrittenRequest.headers.set("host", actualOrigin.host);
+    } catch (_) {}
+    if (request.cf !== undefined && rewrittenRequest.cf === undefined) {
+      try {
+        Object.defineProperty(rewrittenRequest, "cf", {
+          value: request.cf,
+          enumerable: true,
+          configurable: true,
+        });
+      } catch (_) {}
+    }
+    return rewrittenRequest;
+  } catch (_) {
+    return null;
+  }
 }
 
 function firstForwardedIp(xff) {
