@@ -32,6 +32,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          token: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Check breaking update policy
         id: breaking_guard
@@ -50,7 +51,7 @@ jobs:
           upstream_sync_repo: MarSeventh/CloudFlare-ImgBed
           upstream_sync_branch: main
           target_sync_branch: main
-          target_repo_token: ${{ secrets.GITHUB_TOKEN }}
+          target_repo_token: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
           test_mode: false
 
       - name: Complete breaking update notices
