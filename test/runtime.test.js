@@ -7,6 +7,7 @@ describe('deployment runtime', () => {
         it(`sets ${runtime} from the entry context and exposes it to the frontend`, async () => {
             const userConfig = await loadFunction('functions/api/userConfig.js', {
                 fetchPageConfig: async () => ({ config: [{ id: 'serverRuntime', value: 'incorrect' }] }),
+                fetchUploadConfig: async () => ({}),
             });
             const context = {
                 env: { SERVER_RUNTIME: 'node', img_d1: {} },
@@ -15,7 +16,9 @@ describe('deployment runtime', () => {
             };
             const response = await onRequest(context);
             assert.equal(context.env.SERVER_RUNTIME, runtime);
-            assert.equal((await response.json()).serverRuntime, runtime);
+            const body = await response.json();
+            assert.equal(body.serverRuntime, runtime);
+            assert.equal(body.autoTagOnUpload, undefined);
         });
     }
 });

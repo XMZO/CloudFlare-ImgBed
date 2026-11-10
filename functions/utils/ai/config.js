@@ -16,7 +16,7 @@ export function defaultAIConfig() {
     return {
         schemaVersion: 1, revision: 0, enabled: false,
         providers: [], models: [], promptOverrides: {},
-        capabilities: { 'image.tags': { enabled: true, modelId: '', promptId: TAG_PROMPT_ID, language: 'zh-CN', maxTags: 6, preferredTags: [] } },
+        capabilities: { 'image.tags': { enabled: true, autoTagOnUpload: false, modelId: '', promptId: TAG_PROMPT_ID, language: 'zh-CN', maxTags: 6, preferredTags: [] } },
         execution: { requestDeadlineMs: 25000, providerTimeoutMs: 20000, maxBatchSize: 3, concurrency: 2 }
     };
 }
@@ -67,7 +67,7 @@ export function normalizeAIConfig(input, env = {}) {
     if (!['zh-CN', 'en'].includes(options.language ?? 'zh-CN')) fail('Unsupported tag language.');
     const preferredTags = options.preferredTags ?? [];
     if (!Array.isArray(preferredTags) || preferredTags.length > 100 || preferredTags.some(tag => typeof tag !== 'string' || Array.from(tag).length > 24)) fail('Invalid preferred tags.');
-    config.capabilities['image.tags'] = { enabled: options.enabled !== false, modelId, promptId: TAG_PROMPT_ID,
+    config.capabilities['image.tags'] = { enabled: options.enabled !== false, autoTagOnUpload: options.autoTagOnUpload === true, modelId, promptId: TAG_PROMPT_ID,
         language: options.language ?? 'zh-CN', maxTags: integer(options.maxTags, 1, 10, 6), preferredTags: preferredTags.map(tag => tag.trim()).filter(Boolean) };
     const override = input.promptOverrides?.[TAG_PROMPT_ID];
     if (override) {

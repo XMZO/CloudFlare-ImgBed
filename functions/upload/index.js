@@ -2,7 +2,7 @@ import { createS3Client } from '../utils/storage/s3Client.js';
 import { userAuthCheck, UnauthorizedResponse } from "../utils/auth/userAuth";
 import { fetchUploadConfig, fetchSecurityConfig, fetchPageConfig } from "../utils/sysConfig";
 import {
-    createResponse, getUploadIp, getIPAddress, resolveFileExt,
+    createResponse, createUploadResponse, checkUploadFormat, getUploadIp, getIPAddress, resolveFileExt,
     moderateContent, purgeCDNCache, isBlockedUploadIp, buildUniqueFileId, endUpload, getImageDimensions,
     sanitizeUploadFolder
 } from "./uploadTools";
@@ -15,6 +15,7 @@ import { HuggingFaceAPI } from "../utils/storage/huggingfaceAPI";
 import { WebDAVAPI } from "../utils/storage/webdavAPI";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getDatabase } from '../utils/databaseAdapter.js';
+import { resolveUploadExpiry } from '../utils/fileExpiryService.js';
 
 
 export async function onRequest(context) {  // Contents of context object
@@ -56,6 +57,11 @@ export async function onRequest(context) {  // Contents of context object
     // 检查是否为初始化分块上传请求
     const initChunked = url.searchParams.get('initChunked') === 'true';
     if (initChunked) {
+        // 分块上传在开始前校验有效期参数，避免传完所有分块才在合并时被拒绝
+        const expiry = await resolveUploadExpiry(context);
+        if (expiry.error) {
+            return createResponse(expiry.error, { status: 400 });
+        }
         return await initializeChunkedUpload(context);
     }
 
@@ -136,6 +142,8 @@ async function processFileUpload(context, formdata = null) {
     const time = new Date().getTime();
     const file = formdata.get('file');
     let fileName = file.name;
+    const formatError = checkUploadFormat(fileName, context.uploadConfig);
+    if (formatError) return formatError;
     // 部分客户端（同步工具、脚本）不提供有效的 Content-Type，按扩展名兜底推断。
     // 否则图片会被记成 application/octet-stream，导致随机图类型过滤、尺寸提取、
     // 图片处理校验全部失效。
@@ -189,6 +197,16 @@ async function processFileUpload(context, formdata = null) {
     if (imageDimensions) {
         metadata.Width = imageDimensions.width;
         metadata.Height = imageDimensions.height;
+    }
+
+    // 文件有效期由后端按设置决定
+    const expiry = await resolveUploadExpiry(context);
+    if (expiry.error) {
+        return createResponse(expiry.error, { status: 400 });
+    }
+    if (expiry.expiresAt) {
+        metadata.ExpiresAt = expiry.expiresAt;
+        context.fileExpiresAt = expiry.expiresAt;
     }
 
     const fileExt = resolveFileExt(fileName, fileType);
@@ -282,11 +300,10 @@ function buildUploadResponse(context, returnLink) {
     if (context.publicUrl) {
         result.publicUrl = context.publicUrl;
     }
-    return createResponse(JSON.stringify([result]), {
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    });
+    if (context.fileExpiresAt) {
+        result.expiresAt = context.fileExpiresAt;
+    }
+    return createUploadResponse(context, [result]);
 }
 
 // 上传到Cloudflare R2

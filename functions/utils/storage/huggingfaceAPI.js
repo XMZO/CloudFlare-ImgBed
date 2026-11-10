@@ -498,16 +498,19 @@ export class HuggingFaceAPI {
             body
         });
 
-        return response.ok;
+        // 只有 EntryNotFound 表示文件已不存在，删除的目的已经达到（与 WebDAV 删除一致）；
+        // 仓库或分支不存在（RepoNotFound、RevisionNotFound）等其他 404 仍按失败处理
+        return response.ok || (response.status === 404 && response.headers.get('X-Error-Code') === 'EntryNotFound');
     }
 
     /**
      * 获取文件内容（用于私有仓库代理）
      */
-    async getFileContent(filePath) {
-        const fileUrl = `${this.baseURL}/datasets/${this.repo}/resolve/main/${filePath}`;
+    async getFileContent(filePath, { signal } = {}) {
+        const fileUrl = `${this.baseURL}/datasets/${this.repo}/resolve/main/${filePath.split('/').map(encodeURIComponent).join('/')}`;
         return await fetch(fileUrl, {
-            headers: this.isPrivate ? { 'Authorization': `Bearer ${this.token}` } : {}
+            headers: this.isPrivate ? { 'Authorization': `Bearer ${this.token}` } : {},
+            signal
         });
     }
 

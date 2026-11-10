@@ -86,6 +86,7 @@ export class WebDAVAPI {
         const response = await davFetch(this.buildObjectUrl(path), {
             method: options.method || 'GET',
             headers: this.getRequestHeaders(options.headers || {}),
+            signal: options.signal,
         });
 
         if (!isSuccessStatus(response.status) && response.status !== 304) {

@@ -30,9 +30,12 @@ export async function onRequest(context) {
         const body = await request.json()
         const settings = body
 
+        const oldSettings = await getOthersConfig(db, env);
+
+        delete settings.fileExpiry;
+
         // WebDAV internal token 管理
         const webDAV = settings.webDAV || {};
-        const oldSettings = await getOthersConfig(db, env);
         const wasEnabled = oldSettings.webDAV?.enabled;
         const isEnabled = webDAV.enabled;
 
@@ -118,7 +121,6 @@ export async function getOthersConfig(db, env) {
         allowedDir: kvPublicBrowse.allowedDir || '',
         fixed: false,
     }
-
 
     return settings;
 }

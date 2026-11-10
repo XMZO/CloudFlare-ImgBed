@@ -8,8 +8,9 @@ import { HuggingFaceAPI } from '../../utils/storage/huggingfaceAPI.js';
 import { resolveFileType } from '../../utils/mimeTypes.js';
 import { fetchPageConfig, fetchUploadConfig } from '../../utils/sysConfig.js';
 import { getDatabase } from '../../utils/databaseAdapter.js';
-import { moderateContent, endUpload, getUploadIp, getIPAddress, sanitizeUploadFolder, createResponse } from '../uploadTools.js';
+import { moderateContent, endUpload, getUploadIp, getIPAddress, sanitizeUploadFolder, createResponse, checkUploadFormat } from '../uploadTools.js';
 import { userAuthCheck, UnauthorizedResponse } from '../../utils/auth/userAuth.js';
+import { resolveUploadExpiry } from '../../utils/fileExpiryService.js';
 
 export async function onRequestPost(context) {
     const { request, env, waitUntil } = context;
@@ -47,6 +48,8 @@ export async function onRequestPost(context) {
 
         // 获取 HuggingFace 配置
         const uploadConfig = await fetchUploadConfig(env);
+        const formatError = checkUploadFormat(fileName || fullId, uploadConfig);
+        if (formatError) return formatError;
         const hfSettings = uploadConfig.huggingface;
 
         if (!hfSettings || !hfSettings.channels || hfSettings.channels.length === 0) {
@@ -67,6 +70,16 @@ export async function onRequestPost(context) {
 
         if (!hfChannel || !hfChannel.token || !hfChannel.repo) {
             return createResponse(JSON.stringify({ error: 'HuggingFace channel not properly configured' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // 文件有效期由后端按设置决定（提交请求需携带与获取上传地址时相同的 expire 参数）；
+        // 在提交远端文件之前校验，被拒绝的请求不会在 HuggingFace 留下没有记录的文件
+        const expiry = await resolveUploadExpiry({ env, request, url });
+        if (expiry.error) {
+            return createResponse(JSON.stringify({ error: expiry.error }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -113,6 +126,10 @@ export async function onRequestPost(context) {
             Tags: []
         };
 
+        if (expiry.expiresAt) {
+            metadata.ExpiresAt = expiry.expiresAt;
+        }
+
         // 图像审查（公开仓库）
         if (!hfChannel.isPrivate) {
             try {
@@ -131,7 +148,8 @@ export async function onRequestPost(context) {
             env,
             waitUntil,
             uploadConfig,
-            url
+            url,
+            request
         };
         waitUntil(endUpload(uploadContext, fullId, metadata));
 
@@ -150,6 +168,9 @@ export async function onRequestPost(context) {
         const urlPrefix = urlPrefixConfig?.value || '';
         if (urlPrefix) {
             responseBody.publicUrl = `${urlPrefix.replace(/\/+$/, '')}/${fullId}`;
+        }
+        if (metadata.ExpiresAt) {
+            responseBody.expiresAt = metadata.ExpiresAt;
         }
 
         return createResponse(JSON.stringify(responseBody), {

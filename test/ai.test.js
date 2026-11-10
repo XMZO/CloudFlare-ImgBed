@@ -4,6 +4,7 @@ import { loadFunction, memoryDatabase } from './helpers/loadFunction.js';
 import * as responses from '../functions/utils/apiResponse.js';
 import { createContext } from './helpers/context.js';
 import { png } from './helpers/files.js';
+import { defaultAIConfig, normalizeAIConfig } from '../functions/utils/ai/config.js';
 
 describe('AI tagging', () => {
     let db, mocks;
@@ -43,6 +44,38 @@ describe('AI tagging', () => {
         }
         assert.equal(calls.length, 1);
         assert.equal(calls[0].input.image.startsWith('data:image/png;base64,'), true);
+    });
+
+    it('keeps automatic upload tagging opt-in while preserving saved values', () => {
+        assert.equal(defaultAIConfig().capabilities['image.tags'].autoTagOnUpload, false);
+        const input = defaultAIConfig();
+        input.capabilities['image.tags'].autoTagOnUpload = true;
+        assert.equal(normalizeAIConfig(input).capabilities['image.tags'].autoTagOnUpload, true);
+        delete input.capabilities['image.tags'].autoTagOnUpload;
+        assert.equal(normalizeAIConfig(input).capabilities['image.tags'].autoTagOnUpload, false);
+    });
+
+    it('rejects stale automatic tag writes without changing metadata', async () => {
+        await db.put('photo.png', '', { metadata: { FileName: 'photo.png', FileType: 'image/png', TimeStamp: 1, Tags: ['existing'] } });
+        const service = await loadFunction('functions/utils/tagService.js', {
+            getDatabase: () => db,
+            batchAddFilesToIndex: async () => ({ success: true }),
+            cleanPersistedMetadata: value => value,
+            mergeTags: (oldTags, tags) => [...new Set([...oldTags, ...tags])],
+            validateTag: tag => typeof tag === 'string' && !!tag,
+            purgePublicFileListCache: async () => {},
+            purgeRandomFileListCache: async () => {},
+            APIError: responses.APIError,
+            errorResult: responses.errorResult,
+        });
+        const identity = await service.fileIdentity((await db.getWithMetadata('photo.png')).metadata);
+        const changed = (await db.getWithMetadata('photo.png')).metadata;
+        changed.TimeStamp = 2;
+        await db.put('photo.png', '', { metadata: changed });
+        const result = await service.applyTagItems({ env: {}, request: new Request('https://test/upload') }, [{ fileId: 'photo.png', tags: ['new'], sourceIdentity: identity }]);
+        assert.equal(result.results[0].saved, false);
+        assert.equal(result.results[0].error.code, 'FILE_CHANGED');
+        assert.deepEqual((await db.getWithMetadata('photo.png')).metadata.Tags, ['existing']);
     });
 
 });

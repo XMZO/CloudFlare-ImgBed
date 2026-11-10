@@ -100,12 +100,13 @@ export class TelegramAPI {
      * @param {string} fileId - 文件ID
      * @returns {Promise<string|null>} 文件路径或null
      */
-    async getFilePath(fileId) {
+    async getFilePath(fileId, { signal } = {}) {
         try {
-            const url = `${this.baseURL}/getFile?file_id=${fileId}`;
+            const url = `${this.baseURL}/getFile?file_id=${encodeURIComponent(fileId)}`;
             const response = await fetch(url, {
                 method: 'GET',
                 headers: this.defaultHeaders,
+                signal,
             });
 
             const responseData = await response.json();
@@ -115,6 +116,7 @@ export class TelegramAPI {
                 return null;
             }
         } catch (error) {
+            if (signal) throw error;
             console.error('Error getting file path:', error.message);
             return null;
         }
@@ -125,15 +127,17 @@ export class TelegramAPI {
      * @param {string} fileId - 文件ID
      * @returns {Promise<Response>} 文件响应
      */
-    async getFileContent(fileId) {
-        const filePath = await this.getFilePath(fileId);
+    async getFileContent(fileId, { signal } = {}) {
+        const filePath = await this.getFilePath(fileId, { signal });
+        signal?.throwIfAborted();
         if (!filePath) {
             throw new Error(`File path not found for fileId: ${fileId}`);
         }
 
         const fullURL = `${this.fileDomain}/file/bot${this.botToken}/${filePath}`;
         const response = await fetch(fullURL, {
-            headers: this.defaultHeaders
+            headers: this.defaultHeaders,
+            signal
         });
 
         return response;

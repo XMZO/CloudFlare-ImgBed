@@ -1,11 +1,12 @@
 import { createS3Client } from '../utils/storage/s3Client.js';
 /* ========== 分块合并处理 ========== */
-import { createResponse, getUploadIp, getIPAddress, selectConsistentChannel, buildUniqueFileId, endUpload, sanitizeUploadFolder } from './uploadTools';
+import { createResponse, createUploadResponse, checkUploadFormat, getUploadIp, getIPAddress, selectConsistentChannel, buildUniqueFileId, endUpload, sanitizeUploadFolder } from './uploadTools';
 import { retryFailedChunks, cleanupFailedMultipartUploads, checkChunkUploadStatuses, cleanupChunkData, cleanupUploadSession } from './chunkUpload';
 import { CompleteMultipartUploadCommand } from "@aws-sdk/client-s3";
 import { getDatabase } from '../utils/databaseAdapter.js';
 import { fetchPageConfig } from '../utils/sysConfig.js';
 import { resolveFileType } from '../utils/mimeTypes.js';
+import { resolveUploadExpiry } from '../utils/fileExpiryService.js';
 
 // 处理分块合并
 export async function handleChunkMerge(context) {
@@ -44,6 +45,9 @@ export async function handleChunkMerge(context) {
             return createResponse('Error: Session parameters mismatch', { status: 400 });
         }
 
+        const formatError = checkUploadFormat(sessionInfo.originalFileName, context.uploadConfig);
+        if (formatError) return formatError;
+
         // 检查会话是否过期
         if (Date.now() > sessionInfo.expiresAt) {
             return createResponse('Error: Upload session expired', { status: 410 });
@@ -58,6 +62,13 @@ export async function handleChunkMerge(context) {
         // 获取指定的渠道名称（优先URL参数，其次会话信息）
         const channelName = url.searchParams.get('channelName') || sessionInfo.channelName || '';
         context.specifiedChannelName = channelName;
+
+        // 文件有效期由后端按设置决定（合并请求需携带与初始化时相同的 expire 参数）
+        const expiry = await resolveUploadExpiry(context);
+        if (expiry.error) {
+            return createResponse(expiry.error, { status: 400 });
+        }
+        context.fileExpiresAt = expiry.expiresAt;
 
         // 检查分块上传状态
         const chunkStatuses = await checkChunkUploadStatuses(env, uploadId, totalChunks);
@@ -127,12 +138,12 @@ async function startMerge(context, uploadId, totalChunks, originalFileName, orig
                 if (urlPrefix) {
                     result.result[0].publicUrl = `${urlPrefix.replace(/\/+$/, '')}/${fileName}`;
                 }
+                if (context.fileExpiresAt) {
+                    result.result[0].expiresAt = context.fileExpiresAt;
+                }
             }
 
-            return createResponse(JSON.stringify(result.result), {
-                status: 200,
-                headers: { 'Content-Type': 'application/json' }
-            });
+            return createUploadResponse(context, result.result);
         } else {
             throw new Error(result.error || 'Merge failed');
         }
@@ -176,6 +187,9 @@ async function handleChannelBasedMerge(context, uploadId, totalChunks, originalF
             Directory: normalizedFolder === '' ? '' : normalizedFolder + '/',
             Tags: []
         };
+        if (context.fileExpiresAt) {
+            metadata.ExpiresAt = context.fileExpiresAt;
+        }
 
         // 收集所有已上传的分块信息
         const chunkStatuses = await checkChunkUploadStatuses(env, uploadId, totalChunks);
